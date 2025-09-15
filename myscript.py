@@ -1,6 +1,6 @@
 # ===================================================================
-# ==         PAIR-BASED, CLEAN OUTPUT COMPILER (v6 - Dynamic Naming) ==
-# ==       (Creates a clean zip with dynamically named master files) ==
+# ==         PAIR-BASED, CLEAN OUTPUT COMPILER (v7 - Encoding Fix) ==
+# ==     (Ensures cross-platform compatibility for special characters) ==
 # ===================================================================
 import streamlit as st
 import pandas as pd
@@ -84,7 +84,11 @@ if st.button('🚀 Start Compilation', type="primary", disabled=(not uploaded_zi
                         compiled_pair_df = pd.concat([df_detail, df_sup], ignore_index=True)
                         output_filename = f"{base_name}_COMPILED.csv"
                         output_path = os.path.join(folder_path, output_filename)
-                        compiled_pair_df.to_csv(output_path, index=False)
+                        
+                        # ==================== ENCODING FIX 1 ====================
+                        compiled_pair_df.to_csv(output_path, index=False, encoding='utf-8-sig')
+                        # ========================================================
+                        
                         compiled_pair_files_paths.append(output_path)
                         st.write(f"  - Pair `{base_name}`: Compiled -> `{output_filename}` ({len(compiled_pair_df):,} rows).")
                     except Exception as e:
@@ -98,18 +102,17 @@ if st.button('🚀 Start Compilation', type="primary", disabled=(not uploaded_zi
                     final_master_df = pd.concat(master_df_list, ignore_index=True)
                     master_file_rows = len(final_master_df)
 
-                    # ==================== FILENAME CHANGE IS HERE ====================
                     clean_subfolder_path = os.path.join(clean_output_path, folder_name)
                     os.makedirs(clean_subfolder_path, exist_ok=True)
                     
-                    # Create the new dynamic filename
                     new_master_filename = f"{folder_name}_compiled_file.csv"
                     final_output_path = os.path.join(clean_subfolder_path, new_master_filename)
-                    final_master_df.to_csv(final_output_path, index=False)
-                    
-                    # Update the success message to show the new filename
+
+                    # ==================== ENCODING FIX 2 ====================
+                    final_master_df.to_csv(final_output_path, index=False, encoding='utf-8-sig')
+                    # ========================================================
+
                     st.success(f"✅ **Folder Master**: Created `{new_master_filename}` ({master_file_rows:,} rows).")
-                    # ================================================================
             else:
                 st.info("No complete pairs found in this folder to create a master file.")
 
