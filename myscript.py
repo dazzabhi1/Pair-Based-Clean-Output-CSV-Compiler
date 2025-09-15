@@ -1,6 +1,6 @@
 # ===================================================================
-# ==         PAIR-BASED, CLEAN OUTPUT COMPILER (v7 - Encoding Fix) ==
-# ==     (Ensures cross-platform compatibility for special characters) ==
+# ==       PAIR-BASED, CLEAN OUTPUT COMPILER (v8 - With Sorting)   ==
+# ==          (Sorts the final master file by PART_NO)             ==
 # ===================================================================
 import streamlit as st
 import pandas as pd
@@ -12,9 +12,9 @@ from collections import defaultdict
 from io import BytesIO
 
 st.set_page_config(layout="wide")
-st.title('🗂️ Pair-Based, Clean Output CSV Compiler')
+st.title('🗂️ Pair-Based, Sorting & Compiling Tool')
 st.info(
-    "This tool creates a clean zip file containing only one master compiled CSV for each input folder, named after the folder itself."
+    "This tool creates a clean zip file containing one master CSV for each folder, sorted by the 'PART_NO' column."
 )
 
 # --- UI for File Upload ---
@@ -84,34 +84,35 @@ if st.button('🚀 Start Compilation', type="primary", disabled=(not uploaded_zi
                         compiled_pair_df = pd.concat([df_detail, df_sup], ignore_index=True)
                         output_filename = f"{base_name}_COMPILED.csv"
                         output_path = os.path.join(folder_path, output_filename)
-                        
-                        # ==================== ENCODING FIX 1 ====================
                         compiled_pair_df.to_csv(output_path, index=False, encoding='utf-8-sig')
-                        # ========================================================
-                        
                         compiled_pair_files_paths.append(output_path)
                         st.write(f"  - Pair `{base_name}`: Compiled -> `{output_filename}` ({len(compiled_pair_df):,} rows).")
                     except Exception as e:
                         st.warning(f"  - Could not process pair `{base_name}`: {e}")
             
-            # Step B: Compile the folder's master file
+            # Step B: Compile and sort the folder's master file
             master_file_rows = 0
             if compiled_pair_files_paths:
                 master_df_list = [pd.read_csv(f, low_memory=False) for f in compiled_pair_files_paths]
                 if master_df_list:
                     final_master_df = pd.concat(master_df_list, ignore_index=True)
-                    master_file_rows = len(final_master_df)
 
+                    # ==================== NEW SORTING LOGIC ====================
+                    if 'PART_NO' in final_master_df.columns:
+                        # Convert to numeric to ensure correct sorting (1, 2, 10) not (1, 10, 2)
+                        final_master_df['PART_NO'] = pd.to_numeric(final_master_df['PART_NO'], errors='coerce')
+                        final_master_df = final_master_df.sort_values(by='PART_NO', ascending=True)
+                        st.write(f"  - Sorting master file by 'PART_NO' column.")
+                    else:
+                        st.warning(f"  - 'PART_NO' column not found. Skipping sort for this folder.")
+                    # ==========================================================
+
+                    master_file_rows = len(final_master_df)
                     clean_subfolder_path = os.path.join(clean_output_path, folder_name)
                     os.makedirs(clean_subfolder_path, exist_ok=True)
-                    
                     new_master_filename = f"{folder_name}_compiled_file.csv"
                     final_output_path = os.path.join(clean_subfolder_path, new_master_filename)
-
-                    # ==================== ENCODING FIX 2 ====================
                     final_master_df.to_csv(final_output_path, index=False, encoding='utf-8-sig')
-                    # ========================================================
-
                     st.success(f"✅ **Folder Master**: Created `{new_master_filename}` ({master_file_rows:,} rows).")
             else:
                 st.info("No complete pairs found in this folder to create a master file.")
